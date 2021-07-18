@@ -1,0 +1,149 @@
+---
+title: "Exploring the BRFSS data"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+```
+
+### Load data
+
+Make sure your data and R Markdown files are in the same directory. When loaded
+your data file will be called `brfss2013`. Delete this note when before you submit 
+your work. 
+
+```{r load-data}
+load("brfss2013.RData")
+```
+
+
+
+* * *
+
+## Part 1: Data
+The Behavioral Risk Factor Surveillance System (BRFSS) is the nation’s premier system of health-related telephone surveys that collect state data about U.S. residents regarding their health-related risk behaviors, chronic health conditions, and use of preventive services. Established in 1984 with 15 states, BRFSS now collects data in all 50 states as well as the District of Columbia and three U.S. territories. BRFSS completes more than 400,000 adult interviews each year, making it the largest continuously conducted health survey system in the world.
+
+By collecting behavioral health risk data at the state and local level, BRFSS has become a powerful tool for targeting and building health promotion activities. As a result, BRFSS users have increasingly demanded more data and asked for more questions on the survey. Currently, there is a wide sponsorship of the BRFSS survey, including most divisions in the CDC National Center for Chronic Disease Prevention and Health Promotion; other CDC centers; and federal agencies, such as the Health Resources and Services Administration, Administration on Aging, Department of Veterans Affairs, and Substance Abuse and Mental Health Services Administration.
+
+References:
+- BRFSS web site: http://www.cdc.gov/brfss/
+
+* * *
+
+## Part 2: Research questions
+
+**Research quesion 1:**
+
+We assume one's sleep time may show one's health status. For Question 1, I want to show a descriptive of sleeping time and health status.
+
+**Research quesion 2:**
+
+In question 2, I want to expand the question 1, "Ever Told Blood Pressure High" would be added as a new variable in checking health and sleeping time.
+
+So, in this question, i want to know is there any obvious correlation among sleeping time, health quality and blood pressure. 
+
+**Research quesion 3:**
+
+In question 3, I would not take sleeping time as a considered variable. But "Ever Told Blood Cholesterol High" would be counted as a new variable. I would check if there is correlation among Blood Cholesterol, Blood pressure, and health status.
+
+* * *
+
+## Part 3: Exploratory data analysis
+
+NOTE: Insert code chunks as needed by clicking on the "Insert a new code chunk" 
+button (green button with orange arrow) above. Make sure that your code is visible
+in the project you submit. Delete this note when before you submit your work.
+
+**Research quesion 1:**
+
+```{r}
+q1 <- brfss2013 %>%
+    select(genhlth, sleptim1) %>%
+    filter(sleptim1 <= 24) %>%
+    drop_na()
+
+aggregate(. ~ genhlth,q1, mean)
+```
+
+```{r}
+ggplot(q1,aes(x=sleptim1, color = genhlth)) +
+    geom_histogram(fill = 'white') +
+    facet_grid(. ~ genhlth)
+```
+
+```{r}
+ggplot(q1, aes(x=genhlth, y=sleptim1, color=genhlth)) +
+    geom_boxplot()
+```
+
+From the result above, we can say that the group who has better health quality, has higher mean of sleeping time.
+
+**Research quesion 2:**
+ 
+```{r}
+q2 <- brfss2013 %>%
+    select(bphigh4,sleptim1,genhlth) %>%
+    filter(sleptim1 <= 24) %>%
+    drop_na() 
+
+q2$bphigh4[which(q2$bphigh4 != 'No')] <- "Yes"
+
+q2 %>%
+    group_by(bphigh4,genhlth) %>%
+    summarise(mean_of_sleep = mean(sleptim1))
+```
+
+```{r}
+ggplot(q2,aes(x=sleptim1, color = genhlth, fill = genhlth)) +
+    geom_histogram(position="identity", alpha = 0.01) +
+    facet_grid(. ~ bphigh4)
+```
+
+```{r}
+ggplot(q2, aes(x=genhlth, y=sleptim1, color=genhlth)) +
+    geom_boxplot() +
+    facet_grid(. ~ bphigh4)
+```
+
+We can conclude that the ones with high blood pressure would have less sleeping time. No matter what his overall health status.
+
+**Research quesion 3:**
+
+```{r}
+q3 <- brfss2013 %>%
+    select(bphigh4,toldhi2,genhlth) %>%
+    drop_na() 
+
+q3$bphigh4[which(q3$bphigh4 != 'No')] <- "Yes"
+
+q3$toldhi2 <- as.character(q3$toldhi2)
+
+q3$toldhi2[which(q3$toldhi2 == 'Yes')] <- '1'
+q3$toldhi2[which(q3$toldhi2 == 'No')] <- '0'
+
+q3$toldhi2 <- as.integer(q3$toldhi2)
+
+plyt <- q3 %>%
+    group_by(bphigh4,genhlth) %>%
+    summarise(percent_of_Blood_Cholesterol = mean(toldhi2))
+
+plyt
+```
+
+```{r}
+ggplot(data=plyt, aes(x=genhlth, y=percent_of_Blood_Cholesterol, fill = bphigh4)) +
+    geom_bar(stat="identity", width=0.5)
+```
+
+According to the plot, we could conclude that the one with high blood pressure are more likely to have higher Blood Cholesterol. And one with higher health quality, would less likely to be told high blood cholesterol and high blood pressure.
